@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>fan-video-tr · 视频转码</title>
+<link rel="icon" href="/favicon.svg?v=__ASSET_V__" type="image/svg+xml">
+<link rel="stylesheet" href="/css/style.css?v=__ASSET_V__">
+<script>
+  // 首屏前套用主题，避免闪白 / 闪黑
+  (function () {
+    try {
+      var t = localStorage.getItem('fvtr-theme') || 'auto';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) { /* 隐私模式下 localStorage 不可用，忽略 */ }
+  })();
+</script>
+</head>
+<body>
+
+<!-- ==================== 图标精灵 ==================== -->
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.05a1.5 1.5 0 0 1 1.06.44l1.1 1.1H19.5A1.5 1.5 0 0 1 21 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4.05a1.5 1.5 0 0 1 1.06.44l1.1 1.1H19.5A1.5 1.5 0 0 1 21 9v1.5H5.6a1.5 1.5 0 0 0-1.47 1.84l1.7 6.4A1.5 1.5 0 0 0 7.3 20H4.5A1.5 1.5 0 0 1 3 18.5z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.5h7.2L19 9.2V20a.5.5 0 0 1-.5.5h-12A.5.5 0 0 1 6 20zM13 4v5h5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m12 5 0 12m0 0 5-5m-5 5-5-5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7M20 4v4.5h-4.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zm5 11.5 4 4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.6c0-.9 1-1.4 1.7-.9l8.1 5.4a1.1 1.1 0 0 1 0 1.8l-8.1 5.4c-.7.5-1.7 0-1.7-.9z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13" stroke-width="2.4"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9.5h3.2L12 5.6v12.8L7.2 14.5H4zM15.5 9.4a3.6 3.6 0 0 1 0 5.2M18 7a7 7 0 0 1 0 10"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.2L12 5.6v12.8L7.2 14.5H4zM16 9.5l5 5m0-5-5 5"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5m11-5v5h-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5h6v2m-8 0 1 13h8l1-13M10 11v6m4-6v6"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10m0 0 4-4m-4 4-4-4M4 18.5h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 5 5 9-11"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M19.3 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4 1a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.3 2.6a7.6 7.6 0 0 0-2.6 1.5l-2.4-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a7.6 7.6 0 0 0 2.6 1.5l.3 2.6h4l.3-2.6a7.6 7.6 0 0 0 2.6-1.5l2.4 1 2-3.4z"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9.5h18M3 14.5h18M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h5.5L11 21l8-10.5h-5.5z"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4.5h11L19 8v11.5H5zM8.5 4.5v5h7v-5M8 19.5v-5.5h8v5.5"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.6a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.4M12 17h.01"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4 8.5 8.5 0 1 0 20 14.2z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3zM12 10v4.5M12 17.5h.01"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17zM14.5 6.5l3 3"/></symbol>
+</svg>
+
+<!-- ==================== 启动遮罩 ==================== -->
+<div id="splash" class="splash">
+  <div class="splash-inner">
+    <div class="splash-mark"><span></span><span></span><span></span></div>
+    <p class="splash-name">fan-video-tr</p>
+    <p class="splash-sub">视频转码工具</p>
+  </div>
+</div>
+
+<!-- ==================== 顶栏 ==================== -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="brand-text">
+      <b>fan-video-tr</b>
+      <small>视频转码</small>
+    </span>
+  </div>
+
+  <div class="topbar-status" id="topbar-status">
+    <span class="pill pill-muted" id="pill-ffmpeg" title="FFmpeg 版本">FFmpeg 检测中…</span>
+    <span class="pill" id="pill-accel" title="硬件加速状态">加速检测中…</span>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="icon-btn" id="btn-help" type="button" title="快捷键与说明 (?)"><svg><use href="#i-help"></use></svg></button>
+    <button class="icon-btn theme-btn" id="btn-theme" type="button" title="切换主题 (T)">
+      <svg class="only-light"><use href="#i-sun"></use></svg>
+      <svg class="only-dark"><use href="#i-moon"></use></svg>
+    </button>
+    <span class="version" id="version-badge">–</span>
+  </div>
+</header>
+
+<!-- ==================== 主体三栏 ==================== -->
+<main class="layout">
+
+  <!-- ---------- 左：媒体库 ---------- -->
+  <aside class="pane pane-library">
+    <div class="pane-head">
+      <h2><svg><use href="#i-film"></use></svg>媒体库</h2>
+      <div class="pane-head-actions">
+        <span class="count" id="lib-count">0</span>
+        <button class="icon-btn sm" id="btn-refresh" type="button" title="刷新目录 (R)"><svg><use href="#i-refresh"></use></svg></button>
+      </div>
+    </div>
+
+    <div class="lib-search">
+      <svg class="lib-search-icon"><use href="#i-search"></use></svg>
+      <input type="search" id="lib-filter" placeholder="按名称筛选…" autocomplete="off" spellcheck="false">
+      <button class="icon-btn xs ghost" id="btn-clear-filter" type="button" title="清除筛选" hidden><svg><use href="#i-x"></use></svg></button>
+    </div>
+
+    <nav class="breadcrumb" id="breadcrumb" aria-label="路径"></nav>
+
+    <div class="lib-list" id="file-list" role="listbox" aria-label="视频文件" tabindex="0"></div>
+
+    <div class="lib-select">
+      <div class="lib-select-row">
+        <button class="link-btn" id="btn-select-all" type="button">全选</button>
+        <button class="link-btn" id="btn-select-none" type="button">清空</button>
+        <span class="sel-count" id="sel-count">未选择</span>
+      </div>
+      <button class="btn btn-primary block" id="btn-queue" type="button" disabled>
+        <svg><use href="#i-bolt"></use></svg><span>加入队列并转码</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ---------- 中：预览 + 参数 ---------- -->
+  <section class="pane pane-work">
+
+    <!-- 播放器 -->
+    <div class="stage" id="stage">
+      <video id="player" playsinline preload="metadata" hidden></video>
+
+      <div class="stage-empty" id="stage-empty">
+        <div class="stage-empty-icon"><svg><use href="#i-film"></use></svg></div>
+        <p class="stage-empty-title">未选择视频</p>
+        <p class="stage-empty-sub">在左侧媒体库中点击文件名预览，勾选复选框可批量转码</p>
+      </div>
+
+      <div class="stage-busy" id="stage-busy" hidden><span class="spinner"></span><span id="stage-busy-text">分析中…</span></div>
+
+      <div class="player-bar" id="player-bar" hidden>
+        <button class="icon-btn play-btn" id="btn-play" type="button" title="播放/暂停 (空格)"><svg><use href="#i-play"></use></svg></button>
+        <span class="time" id="time-now">00:00</span>
+        <div class="seek" id="seek">
+          <div class="seek-buffer" id="seek-buffer"></div>
+          <div class="seek-fill" id="seek-fill"></div>
+          <div class="seek-knob" id="seek-knob"></div>
+        </div>
+        <span class="time" id="time-total">00:00</span>
+        <div class="volume" id="volume-wrap">
+          <button class="icon-btn" id="btn-mute" type="button" title="静音 (M)"><svg><use href="#i-volume"></use></svg></button>
+          <input type="range" id="volume" min="0" max="100" value="100" title="音量 (↑/↓)">
+        </div>
+        <button class="icon-btn" id="btn-full" type="button" title="全屏 (F)"><svg><use href="#i-full"></use></svg></button>
+      </div>
+    </div>
+
+    <!-- 源文件信息 -->
+    <div class="srcinfo" id="srcinfo" hidden>
+      <div class="srcinfo-name" id="src-name" title="">–</div>
+      <div class="srcinfo-chips" id="src-chips"></div>
+    </div>
+
+    <!-- 参数面板 -->
+    <div class="params" id="params">
+      <!-- 模板 -->
+      <section class="card card-templates">
+        <div class="card-head">
+          <h3><svg><use href="#i-list"></use></svg>转码模板</h3>
+          <button class="link-btn" id="btn-manage-profiles" type="button"><svg><use href="#i-gear"></use></svg>管理模板</button>
+        </div>
+        <div class="chips" id="profile-chips"></div>
+      </section>
+
+      <div class="params-grid">
+        <!-- 视频编码 -->
+        <section class="card">
+          <div class="card-head">
+            <h3><svg><use href="#i-chip"></use></svg>视频编码</h3>
+            <span class="card-note" id="enc-note"></span>
+          </div>
+
+          <div class="field">
+            <label>编码格式</label>
+            <div class="segmented" id="f-codec" role="radiogroup"></div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="f-accel">硬件加速</label>
+              <div class="select-wrap">
+                <select id="f-accel"></select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="f-preset">编码预设</label>
+              <div class="select-wrap">
+                <select id="f-preset"></select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>质量控制</label>
+            <div class="segmented" id="f-rate" role="radiogroup">
+              <button type="button" data-value="crf" role="radio">恒定质量 CRF</button>
+              <button type="button" data-value="bitrate" role="radio">目标码率</button>
+            </div>
+          </div>
+
+          <div class="field" id="wrap-crf">
+            <label for="f-crf">CRF 画质 <output id="f-crf-out">23</output></label>
+            <input type="range" id="f-crf" min="10" max="40" step="1" value="23">
+            <div class="scale"><span>更清晰 · 更慢更大</span><span>更小体积</span></div>
+          </div>
+
+          <div class="field" id="wrap-bitrate" hidden>
+            <label for="f-bitrate">目标视频码率</label>
+            <div class="input-group">
+              <input type="text" id="f-bitrate" value="4M" spellcheck="false" inputmode="decimal">
+              <div class="select-wrap compact">
+                <select id="f-bitrate-preset"></select>
+              </div>
+            </div>
+          </div>
+
+          <label class="switch" id="wrap-twopass">
+            <input type="checkbox" id="f-twopass">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-text">
+              两遍编码
+              <small>同码率下画质更佳、体积更小，耗时约翻倍</small>
+            </span>
+          </label>
+        </section>
+
+        <!-- 画面 -->
+        <section class="card">
+          <div class="card-head">
+            <h3><svg><use href="#i-film"></use></svg>画面</h3>
+            <span class="card-note" id="res-note"></span>
+          </div>
+
+          <div class="field">
+            <label for="f-res">分辨率</label>
+            <div class="input-group">
+              <div class="select-wrap">
+                <select id="f-res"></select>
+              </div>
+              <input type="text" id="f-cussize" placeholder="1920x1080" spellcheck="false" hidden>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="f-fps">帧率</label>
+              <div class="select-wrap"><select id="f-fps"></select></div>
+            </div>
+            <div class="field">
+              <label for="f-pix">像素格式</label>
+              <div class="select-wrap"><select id="f-pix"></select></div>
+            </div>
+          </div>
+
+          <div class="field" id="wrap-trim">
+            <label>转码区间</label>
+            <label class="switch compact">
+              <input type="checkbox" id="f-trim">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-text">只转码选中片段（不勾选则整段转码）</span>
+            </label>
+            <div class="trim-row" id="trim-row" hidden>
+              <input type="number" id="f-trim-start" min="0" step="0.1" value="0">
+              <span class="trim-sep">→</span>
+              <input type="number" id="f-trim-end" min="0" step="0.1" value="0">
+              <button class="link-btn" id="btn-trim-here" type="button">用播放位置</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 音频 -->
+        <section class="card">
+          <div class="card-head">
+            <h3><svg><use href="#i-volume"></use></svg>音频</h3>
+            <span class="card-note" id="audio-note"></span>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="f-audio">音频编码</label>
+              <div class="select-wrap"><select id="f-audio"></select></div>
+            </div>
+            <div class="field">
+              <label for="f-abitrate">音频码率</label>
+              <div class="select-wrap"><select id="f-abitrate"></select></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>声道</label>
+            <div class="segmented" id="f-channels" role="radiogroup"></div>
+          </div>
+        </section>
+
+        <!-- 输出 -->
+        <section class="card">
+          <div class="card-head">
+            <h3><svg><use href="#i-save"></use></svg>输出</h3>
+            <button class="link-btn" id="btn-save-where" type="button">选择保存位置</button>
+          </div>
+
+          <div class="field">
+            <label>容器格式</label>
+            <div class="segmented" id="f-container" role="radiogroup"></div>
+          </div>
+
+          <div class="field">
+            <label for="f-suffix">文件名后缀</label>
+            <div class="input-group">
+              <input type="text" id="f-suffix" spellcheck="false">
+              <button class="btn btn-ghost" id="btn-suffix-reset" type="button" title="按当前参数自动生成">自动</button>
+            </div>
+            <p class="hint" id="save-where">–</p>
+          </div>
+
+          <label class="switch">
+            <input type="checkbox" id="f-faststart" checked>
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-text">前置索引（边下边播）<small>仅 MP4 / MOV 生效</small></span>
+          </label>
+        </section>
+      </div>
+
+      <!-- 提交栏 -->
+      <div class="submit-bar">
+        <div class="estimate" id="estimate">
+          <div class="estimate-item">
+            <span class="estimate-label">预计输出</span>
+            <b id="est-size">–</b>
+          </div>
+          <div class="estimate-item">
+            <span class="estimate-label">体积变化</span>
+            <b id="est-ratio">–</b>
+          </div>
+          <div class="estimate-item">
+            <span class="estimate-label">输出规格</span>
+            <b id="est-spec">–</b>
+          </div>
+          <div class="estimate-item">
+            <span class="estimate-label">编码器</span>
+            <b id="est-encoder">–</b>
+          </div>
+        </div>
+        <button class="btn btn-primary lg" id="btn-start" type="button" disabled>
+          <svg><use href="#i-bolt"></use></svg><span>开始转码</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- 右：转码队列 ---------- -->
+  <aside class="pane pane-queue">
+    <div class="pane-head">
+      <h2><svg><use href="#i-list"></use></svg>转码队列</h2>
+      <div class="pane-head-actions">
+        <span class="count" id="queue-count">0</span>
+        <button class="icon-btn sm" id="btn-clean" type="button" title="清空已结束的任务"><svg><use href="#i-trash"></use></svg></button>
+      </div>
+    </div>
+
+    <div class="queue-stats" id="queue-stats">
+      <span class="qs is-running" data-k="running">运行 <b>0</b></span>
+      <span class="qs is-queued" data-k="queued">排队 <b>0</b></span>
+      <span class="qs is-done" data-k="done">完成 <b>0</b></span>
+      <span class="qs is-failed" data-k="failed">失败 <b>0</b></span>
+    </div>
+
+    <div class="queue-list" id="task-list" role="list"></div>
+
+    <div class="queue-empty" id="queue-empty">
+      <div class="queue-empty-icon"><svg><use href="#i-bolt"></use></svg></div>
+      <p>队列为空</p>
+      <p class="queue-empty-sub">选择文件并配置参数后开始转码</p>
+    </div>
+  </aside>
+</main>
+
+<!-- ==================== 弹窗 ==================== -->
+<div class="modal" id="modal-save" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-save-title">
+    <div class="modal-head">
+      <h3 id="modal-save-title">选择保存位置</h3>
+      <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="save-opts" id="save-opts" role="radiogroup"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close type="button">取消</button>
+      <button class="btn btn-primary" id="save-confirm" type="button">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-profiles" hidden>
+  <div class="modal-box wide" role="dialog" aria-modal="true" aria-labelledby="modal-profiles-title">
+    <div class="modal-head">
+      <h3 id="modal-profiles-title">转码模板管理</h3>
+      <div class="modal-head-actions">
+        <button class="btn btn-ghost sm" id="btn-profiles-reset" type="button">恢复出厂</button>
+        <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg><use href="#i-x"></use></svg></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="profile-list" id="profile-list"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" id="btn-profile-add" type="button"><svg><use href="#i-plus"></use></svg>新建模板</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-profile-form" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-pf-title">
+    <div class="modal-head">
+      <h3 id="modal-pf-title">新建模板</h3>
+      <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label for="pf-name">模板名称</label>
+        <input type="text" id="pf-name" maxlength="40" placeholder="例如：NAS 归档" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="pf-desc">用途说明</label>
+        <input type="text" id="pf-desc" maxlength="60" placeholder="可选，例如：存到 NAS 的长期归档版本" spellcheck="false">
+      </div>
+      <p class="hint">模板将保存当前面板上的全部转码参数。</p>
+      <div class="pf-summary" id="pf-summary">–</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close type="button">取消</button>
+      <button class="btn btn-primary" id="pf-save" type="button">保存模板</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-help" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-help-title">
+    <div class="modal-head">
+      <h3 id="modal-help-title">使用说明与快捷键</h3>
+      <button class="icon-btn sm" data-close type="button" aria-label="关闭"><svg><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="help-grid">
+        <div>
+          <h4>快捷键</h4>
+          <ul class="kbd-list">
+            <li><kbd>空格</kbd> 播放 / 暂停</li>
+            <li><kbd>←</kbd> <kbd>→</kbd> 后退 / 前进 5 秒</li>
+            <li><kbd>↑</kbd> <kbd>↓</kbd> 音量增减</li>
+            <li><kbd>M</kbd> 静音切换</li>
+            <li><kbd>F</kbd> 全屏</li>
+            <li><kbd>Enter</kbd> 开始转码</li>
+            <li><kbd>R</kbd> 刷新目录</li>
+            <li><kbd>T</kbd> 切换主题</li>
+            <li><kbd>?</kbd> 打开本说明</li>
+            <li><kbd>Esc</kbd> 关闭弹窗</li>
+          </ul>
+        </div>
+        <div>
+          <h4>转码小贴士</h4>
+          <ul class="tip-list">
+            <li><b>CRF 越小越清晰</b>，体积也越大；18 以接近无损，23 为通用，28 以上适合压缩。</li>
+            <li><b>H.265 / AV1</b> 同画质体积约为 H.264 的一半，但编码更慢、老设备可能无法硬解。</li>
+            <li><b>硬件加速</b>（NVENC / QSV / VAAPI）速度是软件的 5~20 倍，同画质下码率控制略逊。</li>
+            <li><b>两遍编码</b>用于固定码率场景，体积与画质都优于单遍，代价是耗时翻倍。</li>
+            <li><b>分辨率不会放大</b>：源视频低于目标档位时保持原始尺寸。</li>
+            <li><b>勾选复选框</b>可批量转码同一目录下的多个文件，参数一次配置、全部套用。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="/js/app.js?v=__ASSET_V__"></script>
+</body>
+</html>

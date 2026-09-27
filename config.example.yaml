@@ -1,0 +1,58 @@
+# fan-video-tr 配置示例
+#
+# 加载优先级：命令行参数 > 环境变量（FVT_ 前缀）> 本文件 > 内置默认值
+# 查找位置：当前目录 ./config.yaml → ./data/config.yaml → /etc/fan-video-tr/config.yaml
+# 环境变量规则：层级用下划线分隔，例如 app.data_dir -> FVT_APP_DATA_DIR
+#
+# 相对路径（除 app.media_dir 外）均基于数据目录解析。
+
+app:
+  # 监听端口
+  port: 8790
+  # Gin 运行模式：production / development（development 会打印路由表）
+  env: production
+  # 是否开启调试日志
+  debug: false
+  # 数据目录：转码成品、模板 profiles.json 都存这里
+  data_dir: ./data
+  # 自定义前端目录；留空使用二进制内嵌资源
+  web_dir: ""
+  # 自定义 favicon；留空依次回退 <data_dir>/favicon.svg -> 内置图标
+  favicon: ""
+  # 视频浏览根目录；留空则允许浏览服务器全部路径
+  media_dir: ""
+  # 转码输出目录（相对路径基于 data_dir）
+  output_dir: output
+  # 并发转码任务数：CPU 密集型转码建议 1~2，硬件加速可适当增大
+  worker: 1
+
+ffmpeg:
+  # ffmpeg / ffprobe 可执行文件路径（容器内已内置）
+  path: ffmpeg
+  ffprobe_path: ffprobe
+  # 软件编码线程数；0 表示由 ffmpeg 自动探测
+  threads: 0
+  # 默认预设：ultrafast / superfast / veryfast / faster / fast / medium / slow / slower / veryslow
+  preset: veryfast
+  # 默认 CRF（值越小画质越高、体积越大；仅在 CRF 模式下生效）
+  crf: 23
+  # 默认音频码率
+  audio_bitrate: 192k
+  # 默认硬件加速：auto / none / nvenc / qsv / vaapi
+  accel: auto
+  # VAAPI 渲染设备节点
+  vaapi_device: /dev/dri/renderD128
+  # 硬件解码：false = 仅硬件编码 + 软件解码（兼容性最好）
+  hw_decode: false
+  # 启动时实际跑一次微型编码自检，避免把不可用的加速方式标成可用
+  detect_accel: true
+
+logging:
+  # debug / info / warn / error
+  level: info
+  # console / json
+  format: console
+  # 日志文件路径；留空输出到 stdout
+  output_path: ""
+  # 输出到 stderr（与 output_path 互斥）
+  to_stderr: false

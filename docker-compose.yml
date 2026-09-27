@@ -1,0 +1,37 @@
+services:
+  fan-video-tr:
+    image: mobufan/fan-video-tr:1.0.0
+    container_name: fan-video-tr
+    restart: unless-stopped
+    ports:
+      - "8790:8790"
+    environment:
+      # 界面语言与时区
+      TZ: Asia/Shanghai
+      # 监听端口（容器内固定 8790 时无需改动）
+      FVT_APP_PORT: "8790"
+      # 数据目录：转码输出、模板 profile.json 都在这里
+      FVT_APP_DATA_DIR: /data
+      # 转码输出目录（相对路径基于数据目录解析）
+      FVT_APP_OUTPUT_DIR: output
+      # 视频浏览根目录，留空则可浏览容器内全部路径（配合 volumes 使用）
+      FVT_APP_MEDIA_DIR: /media
+      # 并发转码数：显卡/CPU 足够时可调大，机械硬盘建议 1
+      FVT_APP_WORKER: "1"
+      # 硬件加速：auto / none / nvenc / qsv / vaapi
+      FVT_FFMPEG_ACCEL: auto
+      # 启动时自检硬件编码是否真的可用
+      FVT_FFMPEG_DETECT_ACCEL: "true"
+      FVT_LOGGING_LEVEL: info
+    volumes:
+      # 视频素材目录（只读挂载即可，输出请走 /data）
+      - /path/to/videos:/media:ro
+      # 数据与转码成品：删容器不丢结果
+      - /path/to/fan-video-tr-data:/data
+    # 需要硬件转码时放开设备映射（NVIDIA 需另行安装 container toolkit）
+    devices:
+      - /dev/dri:/dev/dri
+    # VAAPI 渲染节点权限较严，必要时给容器加 video 组
+    # group_add:
+    #   - "44"   # video
+    #   - "992"  # render（按宿主机实际 gid 调整）
