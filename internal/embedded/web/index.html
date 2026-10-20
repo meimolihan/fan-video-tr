@@ -49,6 +49,7 @@
   <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
   <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3zM12 10v4.5M12 17.5h.01"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 20V8m0 0 5 5m-5-5-5 5M4 4h16"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17zM14.5 6.5l3 3"/></symbol>
 </svg>
 
@@ -95,6 +96,7 @@
       <h2><svg><use href="#i-film"></use></svg>媒体库</h2>
       <div class="pane-head-actions">
         <span class="count" id="lib-count">0</span>
+        <button class="icon-btn sm" id="btn-upload" type="button" title="上传视频到「我的上传」目录"><svg><use href="#i-upload"></use></svg></button>
         <button class="icon-btn sm" id="btn-refresh" type="button" title="刷新目录 (R)"><svg><use href="#i-refresh"></use></svg></button>
       </div>
     </div>
@@ -461,6 +463,7 @@
             <li><kbd>F</kbd> 全屏</li>
             <li><kbd>Enter</kbd> 开始转码</li>
             <li><kbd>R</kbd> 刷新目录</li>
+            <li><kbd>U</kbd> 上传视频</li>
             <li><kbd>T</kbd> 切换主题</li>
             <li><kbd>?</kbd> 打开本说明</li>
             <li><kbd>Esc</kbd> 关闭弹窗</li>
@@ -483,6 +486,26 @@
 </div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
+
+<!-- ==================== 视频上传（按钮 / 拖拽 / 粘贴） ==================== -->
+<input type="file" id="upload-input" multiple accept="video/*" hidden>
+
+<div class="drop-overlay" id="drop-overlay" hidden>
+  <div class="drop-card">
+    <div class="drop-icon"><svg><use href="#i-upload"></use></svg></div>
+    <div class="drop-title">松手即上传</div>
+    <div class="drop-sub">支持多选 · 仅视频格式 · 上传到「我的上传」目录</div>
+  </div>
+</div>
+
+<div class="upload-queue" id="upload-queue" hidden>
+  <div class="uq-head">
+    <span class="uq-title">上传队列</span>
+    <span class="uq-stat" id="uq-stat"></span>
+    <button id="uq-clear" class="icon-btn xs ghost" type="button" title="清除已结束的记录" hidden><svg><use href="#i-x"></use></svg></button>
+  </div>
+  <div class="uq-list" id="uq-list"></div>
+</div>
 
 <script src="/js/app.js?v=__ASSET_V__"></script>
 </body>

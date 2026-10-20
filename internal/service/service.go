@@ -17,6 +17,7 @@ type Service struct {
 	Media    *MediaService
 	Tasks    *TaskManager
 	Profiles *ProfileManager
+	Uploads  *UploadService
 }
 
 // New 构建 Service。
@@ -28,6 +29,7 @@ func New(cfg *config.Config, ffc *ffmpeg.Client, log *zap.SugaredLogger) *Servic
 	}
 	s.Media = NewMediaService(cfg, ffc, log)
 	s.Tasks = NewTaskManager(cfg, ffc, s.Media, log)
+	s.Uploads = NewUploadService(cfg, log)
 	pm, err := NewProfileManager(cfg.App.DataDir, log)
 	if err != nil {
 		log.Errorf("初始化转码预设失败（已用内置模板兜底）: %v", err)

@@ -184,7 +184,8 @@
 
   function loadVersion() {
     return api('/api/version').then(function (d) {
-      var v = d.version || '';
+      // 后端版本号约定不带 "v" 前缀；此处兼容历史上误带前缀的镜像（如 v0.0.2）
+      var v = String(d.version || '').replace(/^v/i, '');
       $('#version-badge').textContent = v ? 'v' + v : '–';
       document.title = 'fan-video-tr' + (v ? ' · v' + v : '') + ' · 视频转码';
     }).catch(function () {
@@ -1007,6 +1008,7 @@
       var path = r.dataset.path;
       var isDir = r.dataset.dir === '1';
       r.addEventListener('click', function (ev) {
+        if (ev.target.closest('.lib-del')) return;
         var onCheck = ev.target.closest('.lib-check');
         if (onCheck || isDir) {
           if (isDir) loadDir(r.dataset.path);
@@ -1014,6 +1016,17 @@
           return;
         }
         preview(path);
+      });
+    });
+    $$('.lib-del', box).forEach(function (btn) {
+      btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var row = btn.closest('.lib-row');
+        removeEntry({
+          name: row.dataset.name,
+          path: row.dataset.path,
+          is_dir: row.dataset.dir === '1',
+        });
       });
     });
     updateSelCount();
@@ -1024,13 +1037,43 @@
       (checked ? ' checked' : '') + (it.is_up ? ' is-up' : '');
     var sub = it.is_dir ? '文件夹' : (fmtSize(it.size) + (it.modified ? ' · ' + fmtAgo(new Date(it.modified * 1000).toISOString()) : ''));
     var ico = it.is_dir ? 'i-folder' : 'i-file';
-    return '<div class="' + cls + '" data-path="' + esc(it.path) + '" data-dir="' + (it.is_dir ? '1' : '0') + '" role="option">' +
+    // 仅后端判定可删除的条目才渲染删除按钮（应用自有目录内，且非「返回上级」行）
+    var del = (it.deletable && !it.is_up)
+      ? '<button class="lib-del" type="button" title="删除" aria-label="删除 ' + esc(it.name) + '">' + icon('i-trash') + '</button>'
+      : '';
+    return '<div class="' + cls + '" data-path="' + esc(it.path) + '" data-name="' + esc(it.name) + '" data-dir="' + (it.is_dir ? '1' : '0') + '" role="option">' +
       '<span class="lib-check">' + icon('i-check') + '</span>' +
       '<span class="lib-icon">' + icon(ico) + '</span>' +
       '<span class="lib-meta">' +
         '<span class="lib-name">' + esc(it.name) + '</span>' +
         '<span class="lib-sub">' + esc(sub) + '</span>' +
-      '</span></div>';
+      '</span>' + del + '</div>';
+  }
+
+  // removeEntry 删除文件/目录：二次确认后调用后端，成功后重载当前目录
+  function removeEntry(it) {
+    var kind = it.is_dir ? '目录' : '文件';
+    var tip = it.is_dir ? '\n目录将连同其中的内容一并删除，此操作不可恢复。' : '';
+    if (!confirm('确定删除' + kind + '「' + it.name + '」？' + tip)) return;
+    api('/api/media/file?path=' + encodeURIComponent(it.path), { method: 'DELETE' })
+      .then(function () {
+        toast('已删除：' + it.name, 'ok');
+        // 删的是当前预览中的视频：先关闭播放器，避免留下失效的播放状态
+        if (!it.is_dir && S.current === it.path) {
+          S.current = '';
+          S.info = null;
+          delete S.selected[it.path];
+          var v = $('#player');
+          if (v) { v.pause(); v.removeAttribute('src'); v.load(); v.hidden = true; }
+          $('#player-bar').hidden = true;
+          $('#srcinfo').hidden = true;
+          $('#stage-empty').hidden = false;
+        }
+        loadDir(S.dir);
+      })
+      .catch(function (e) {
+        toast('删除失败：' + e.message, 'error');
+      });
   }
 
   function parentOf(dir) {
@@ -1534,11 +1577,217 @@
       .catch(function (e) { toast('清理失败：' + e.message, 'error'); });
   }
 
+  /* ==================== 视频上传（按钮 / 拖拽 / 粘贴 + 队列：进度、取消、重试） ==================== */
+
+  var UPLOAD_VIDEO_EXTS = ['mp4', 'mkv', 'mov', 'avi', 'wmv', 'flv', 'webm', 'm4v', 'ts', '3gp',
+    'rmvb', 'mpg', 'mpeg', 'm2ts', 'rm', 'm2v', 'vob', 'ogv', 'mts', 'f4v'];
+  var UPLOAD_MAX_CONCURRENT = 2;
+  var uploadQueue = []; // {id,name,size,loaded,status,file,xhr,err,path}
+  var uploadSeq = 0;
+  var uploadsDir = '';
+  var firstDonePath = '';
+  var uqHideTimer = null;
+  var uqLastRender = 0;
+
+  function isVideoExt(name) {
+    var m = /\.([a-z0-9]+)$/i.exec(name || '');
+    return !!m && UPLOAD_VIDEO_EXTS.indexOf(m[1].toLowerCase()) !== -1;
+  }
+
+  function uqActive() {
+    return uploadQueue.some(function (i) { return i.status === 'pending' || i.status === 'uploading'; });
+  }
+
+  function renderUploadQueue(force) {
+    var now = Date.now();
+    if (!force && now - uqLastRender < 90) return;
+    uqLastRender = now;
+    var box = $('#uq-list');
+    var card = $('#upload-queue');
+    if (!uploadQueue.length) { card.hidden = true; return; }
+    card.hidden = false;
+    box.innerHTML = '';
+    uploadQueue.forEach(function (it) {
+      var pct = it.size > 0 ? Math.min(100, Math.floor(it.loaded / it.size * 100)) : 0;
+      var statusText = it.status === 'done' ? '✓ 完成'
+        : it.status === 'error' ? '✕ ' + (it.err || '失败')
+        : it.status === 'canceled' ? '已取消'
+        : it.status === 'uploading' ? pct + '%'
+        : '等待中';
+      var row = document.createElement('div');
+      row.className = 'uq-item';
+      row.innerHTML =
+        '<div class="uq-row">' +
+          '<span class="uq-name" title="' + esc(it.name) + '">' + esc(it.name) + '</span>' +
+          '<span class="uq-size">' + fmtSize(it.size) + '</span>' +
+          (it.status === 'pending' || it.status === 'uploading'
+            ? '<button class="uq-btn" data-act="cancel" type="button" title="取消">✕</button>'
+            : it.status === 'error'
+              ? '<button class="uq-btn" data-act="retry" type="button" title="重试">↻</button>'
+              : '') +
+        '</div>' +
+        '<div class="uq-bar"><i class="' + it.status + '" style="width:' + (it.status === 'done' ? 100 : pct) + '%"></i></div>' +
+        '<div class="uq-status ' + it.status + '">' + esc(statusText) + '</div>';
+      $$('[data-act]', row).forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (btn.getAttribute('data-act') === 'cancel') {
+            if (it.xhr) it.xhr.abort();
+            else { it.status = 'canceled'; renderUploadQueue(true); onUploadSettled(); }
+          } else {
+            it.status = 'pending'; it.loaded = 0; it.err = '';
+            renderUploadQueue(true); pumpUploads();
+          }
+        });
+      });
+      box.appendChild(row);
+    });
+    var done = uploadQueue.filter(function (i) { return i.status === 'done'; }).length;
+    $('#uq-stat').textContent = done + '/' + uploadQueue.length;
+    $('#uq-clear').hidden = uqActive();
+  }
+
+  function enqueueFiles(files) {
+    var arr = Array.prototype.slice.call(files || []);
+    if (!arr.length) return;
+    var skipped = 0;
+    arr.forEach(function (f) {
+      if (!isVideoExt(f.name)) { skipped++; return; }
+      uploadQueue.push({ id: ++uploadSeq, name: f.name, size: f.size, loaded: 0, status: 'pending', file: f, xhr: null, err: '' });
+    });
+    clearTimeout(uqHideTimer);
+    if (skipped) toast('已跳过 ' + skipped + ' 个非视频文件', 'warn');
+    renderUploadQueue(true);
+    pumpUploads();
+  }
+
+  function pumpUploads() {
+    var slots = UPLOAD_MAX_CONCURRENT - uploadQueue.filter(function (i) { return i.status === 'uploading'; }).length;
+    for (var i = 0; i < uploadQueue.length; i++) {
+      if (slots <= 0) break;
+      var it = uploadQueue[i];
+      if (it.status === 'pending') { startUpload(it); slots--; }
+    }
+  }
+
+  function startUpload(it) {
+    it.status = 'uploading';
+    var fd = new FormData();
+    fd.append('file', it.file);
+    var xhr = new XMLHttpRequest();
+    it.xhr = xhr;
+    xhr.open('POST', '/api/media/upload');
+    xhr.upload.onprogress = function (e) {
+      if (e.lengthComputable) { it.loaded = e.loaded; renderUploadQueue(); }
+    };
+    xhr.onload = function () {
+      it.xhr = null;
+      var d = {};
+      try { d = JSON.parse(xhr.responseText || '{}'); } catch (e) { /* 忽略 */ }
+      if (xhr.status === 200 && d.ok) {
+        it.status = 'done';
+        it.path = d.path;
+        uploadsDir = d.dir || uploadsDir;
+        if (!firstDonePath) firstDonePath = d.path;
+        if (d.renamed && d.name) it.name = d.name;
+      } else {
+        it.status = 'error';
+        it.err = d.error || ('HTTP ' + xhr.status);
+      }
+      renderUploadQueue(true);
+      onUploadSettled();
+    };
+    xhr.onerror = function () {
+      it.xhr = null; it.status = 'error'; it.err = '网络错误';
+      renderUploadQueue(true); onUploadSettled();
+    };
+    xhr.onabort = function () {
+      it.xhr = null;
+      if (it.status === 'uploading') it.status = 'canceled';
+      renderUploadQueue(true); onUploadSettled();
+    };
+    xhr.send(fd);
+    renderUploadQueue(true);
+  }
+
+  // 队列全部结束时：刷新列表、跳转上传目录并自动选中第一个上传成功的视频
+  function onUploadSettled() {
+    pumpUploads();
+    if (uqActive()) return;
+    var doneCount = uploadQueue.filter(function (i) { return i.status === 'done'; }).length;
+    if (doneCount && firstDonePath) {
+      var target = uploadsDir || S.dir || '';
+      loadDir(target).then(function () { preview(firstDonePath); });
+      toast('已上传 ' + doneCount + ' 个视频到「我的上传」', 'ok');
+      firstDonePath = '';
+    }
+    // 全部成功（无失败/取消）时 4 秒后自动收起队列卡片
+    var hasProblem = uploadQueue.some(function (i) { return i.status === 'error' || i.status === 'canceled'; });
+    if (doneCount && !hasProblem) {
+      clearTimeout(uqHideTimer);
+      uqHideTimer = setTimeout(function () { $('#upload-queue').hidden = true; }, 4000);
+    }
+  }
+
+  function bindUpload() {
+    $('#btn-upload').addEventListener('click', function () { $('#upload-input').click(); });
+    $('#upload-input').addEventListener('change', function (e) {
+      enqueueFiles(e.target.files);
+      e.target.value = '';
+    });
+    $('#uq-clear').addEventListener('click', function () {
+      for (var i = uploadQueue.length - 1; i >= 0; i--) {
+        var s = uploadQueue[i].status;
+        if (s !== 'pending' && s !== 'uploading') uploadQueue.splice(i, 1);
+      }
+      renderUploadQueue(true);
+    });
+
+    // 整窗拖拽：仅响应携带文件的拖拽，进窗口显示遮罩，松手即入队
+    var dragDepth = 0;
+    var dragHasFiles = function (e) {
+      return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1;
+    };
+    window.addEventListener('dragenter', function (e) {
+      if (!dragHasFiles(e)) return;
+      e.preventDefault();
+      dragDepth++;
+      $('#drop-overlay').hidden = false;
+    });
+    window.addEventListener('dragover', function (e) {
+      if (!dragHasFiles(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+    window.addEventListener('dragleave', function () {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (!dragDepth) $('#drop-overlay').hidden = true;
+    });
+    window.addEventListener('drop', function (e) {
+      if (!dragHasFiles(e)) return;
+      e.preventDefault();
+      dragDepth = 0;
+      $('#drop-overlay').hidden = true;
+      enqueueFiles(e.dataTransfer.files);
+    });
+
+    // 剪贴板粘贴视频文件（输入框聚焦时不拦截，避免影响正常文本粘贴）
+    window.addEventListener('paste', function (e) {
+      var tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+      var files = e.clipboardData && e.clipboardData.files;
+      if (files && files.length) {
+        e.preventDefault();
+        enqueueFiles(files);
+      }
+    });
+  }
+
   /* ==================== 事件绑定 ==================== */
 
   function bindEvents() {
     // 媒体库
     $('#btn-refresh').addEventListener('click', function () { loadDir(S.dir); toast('已刷新', 'ok', 1500); });
+    bindUpload();
     $('#lib-filter').addEventListener('input', function () {
       S.filter = this.value.trim().toLowerCase();
       $('#btn-clear-filter').hidden = !S.filter;
@@ -1743,6 +1992,7 @@
         if (!$('#btn-start').disabled) { ev.preventDefault(); submit(); }
         break;
       case 'r': case 'R': ev.preventDefault(); loadDir(S.dir); break;
+      case 'u': case 'U': ev.preventDefault(); $('#upload-input').click(); break;
       case 't': case 'T': ev.preventDefault(); cycleTheme(); break;
       case '?': ev.preventDefault(); openModal('modal-help'); break;
     }

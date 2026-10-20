@@ -36,6 +36,10 @@ type AppConfig struct {
 	MediaDir string `mapstructure:"media_dir"`
 	// 转码输出目录，默认 <data_dir>/output
 	OutputDir string `mapstructure:"output_dir"`
+	// 上传视频存放目录，默认 <data_dir>/uploads
+	UploadDir string `mapstructure:"upload_dir"`
+	// 上传视频大小上限（字节），默认 10GB
+	UploadMaxSize int64 `mapstructure:"upload_max_size"`
 	// 转码任务并发数，默认 1（避免同时启动多个重编码抢占 CPU / GPU）
 	Worker int `mapstructure:"worker"`
 }
@@ -106,8 +110,8 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("解析配置失败: %w", err)
 	}
 
-	// 确保目录存在（相对路径基于数据目录解析，见 OutputDir）
-	for _, dir := range []string{cfg.App.DataDir, cfg.OutputDir()} {
+	// 确保目录存在（相对路径基于数据目录解析，见 OutputDir / UploadsDir）
+	for _, dir := range []string{cfg.App.DataDir, cfg.OutputDir(), cfg.UploadsDir()} {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, fmt.Errorf("创建目录 %s 失败: %w", dir, err)
 		}
@@ -126,6 +130,8 @@ func setDefaults() {
 	viper.SetDefault("app.favicon", "")
 	viper.SetDefault("app.media_dir", "")
 	viper.SetDefault("app.output_dir", "output")
+	viper.SetDefault("app.upload_dir", "uploads")
+	viper.SetDefault("app.upload_max_size", 10*1024*1024*1024)
 	viper.SetDefault("app.worker", 1)
 
 	viper.SetDefault("ffmpeg.path", "ffmpeg")
@@ -162,6 +168,18 @@ func (c *Config) OutputDir() string {
 // ProfilesPath 返回转码预设（模板）文件路径。
 func (c *Config) ProfilesPath() string {
 	return filepath.Join(c.App.DataDir, "profiles.json")
+}
+
+// UploadsDir 返回上传视频存放目录。绝对路径原样返回；相对路径基于数据目录解析
+// （与 OutputDir 同规则，-data 覆盖数据目录后自动跟随）。
+func (c *Config) UploadsDir() string {
+	if filepath.IsAbs(c.App.UploadDir) {
+		return c.App.UploadDir
+	}
+	if c.App.UploadDir == "" {
+		return filepath.Join(c.App.DataDir, "uploads")
+	}
+	return filepath.Join(c.App.DataDir, c.App.UploadDir)
 }
 
 // FaviconPath 返回自定义 favicon 文件路径。未配置返回空串；

@@ -29,6 +29,16 @@ func (h *mediaHandler) listDir(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无法读取目录: " + err.Error()})
 		return
 	}
+	// 浏览器根目录（未指定 path 或等于 HomeDir）时注入「我的上传」虚拟目录项，
+	// 上传的视频可直接浏览转码，无需手动找路径（纯前端展示，不落盘）
+	cur := normalizePath(dir)
+	if cur == "" || samePath(cur, h.svc.Media.HomeDir()) {
+		list = append([]service.FileEntry{{
+			Name:  "📤 我的上传",
+			Path:  h.svc.Cfg.UploadsDir(),
+			IsDir: true,
+		}}, list...)
+	}
 	// 统计视频数量，便于前端提示
 	videos := 0
 	for _, it := range list {
@@ -38,12 +48,17 @@ func (h *mediaHandler) listDir(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"path":    h.svc.Media.HomeDir(),
-		"current": normalizePath(dir),
+		"current": cur,
 		"up":      upPath(dir),
 		"total":   len(list),
 		"videos":  videos,
 		"items":   list,
 	})
+}
+
+// samePath 判断两个路径是否指向同一目录（清理后比较）。
+func samePath(a, b string) bool {
+	return filepath.Clean(a) == filepath.Clean(b)
 }
 
 // normalizePath 返回空串对应的实际根路径展示值。
@@ -183,4 +198,22 @@ func (h *mediaHandler) thumb(c *gin.Context) {
 	}
 	c.Header("Cache-Control", "private, max-age=600")
 	c.Data(http.StatusOK, "image/jpeg", data)
+}
+
+// remove 删除文件或目录 DELETE /api/media/file?path=
+// 目录按递归删除处理；路径须位于应用自有目录内（见 service.MediaService.Remove）。
+func (h *mediaHandler) remove(c *gin.Context) {
+	p := strings.TrimSpace(c.Query("path"))
+	if p == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少 path 参数"})
+		return
+	}
+	target, err := h.svc.Media.Remove(p)
+	if err != nil {
+		h.log.Warnf("删除失败 %s: %v", p, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	h.log.Infof("已删除: %s", target)
+	c.JSON(http.StatusOK, gin.H{"ok": true, "path": target})
 }

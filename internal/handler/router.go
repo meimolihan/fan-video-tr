@@ -36,6 +36,7 @@ type Handler struct {
 	task    *taskHandler
 	profile *profileHandler
 	meta    *metaHandler
+	upload  *uploadHandler
 }
 
 // assetVersionPlaceholder 是 index.html 内静态资源 URL 上的版本占位符，
@@ -53,6 +54,7 @@ func New(cfg *config.Config, svc *service.Service, log *zap.SugaredLogger) *Hand
 		task:    &taskHandler{svc: svc, log: log},
 		profile: &profileHandler{svc: svc, log: log},
 		meta:    &metaHandler{svc: svc, log: log},
+		upload:  &uploadHandler{svc: svc, log: log},
 	}
 	h.assetV = h.computeAssetVersion()
 	return h
@@ -104,6 +106,8 @@ func (h *Handler) Router() *gin.Engine {
 		api.GET("/media/info", h.media.info)
 		api.GET("/media/stream", h.media.stream)
 		api.GET("/media/thumb", h.media.thumb)
+		api.DELETE("/media/file", h.media.remove)
+		api.POST("/media/upload", h.upload.upload)
 
 		api.GET("/tasks", h.task.list)
 		api.POST("/tasks", h.task.create)

@@ -531,6 +531,30 @@ input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
 }
 .lib-row.dir .lib-sub { color: var(--muted); }
 
+/* 条目删除按钮：悬停浮现（触屏无 hover，见下方 @media (hover: none) 常驻显示） */
+.lib-del {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: var(--r-sm);
+  line-height: 0;
+  opacity: 0;
+  transition: opacity .15s ease, color .15s ease, background-color .15s ease, transform .1s ease;
+}
+.lib-del svg { display: block; font-size: 14px; }
+.lib-row:hover .lib-del,
+.lib-row.active .lib-del,
+.lib-del:focus-visible { opacity: 1; }
+.lib-del:hover { color: var(--danger); background: var(--dang-soft); }
+.lib-del:active { transform: scale(.92); }
+.lib-del:focus-visible { outline: 1px solid var(--brand); }
+
 .lib-list .empty {
   padding: 40px 16px; text-align: center;
   color: var(--faint); font-size: 12.5px;
@@ -1149,6 +1173,7 @@ kbd {
   .btn.lg { height: 46px; }
   .lib-row { padding: 9px 8px; }
   .lib-check { width: 19px; height: 19px; }
+  .lib-del { opacity: 1; min-width: 32px; min-height: 32px; }
   .segmented button { height: 32px; }
   .seek { height: 22px; }
 }
@@ -1176,3 +1201,121 @@ kbd {
   vertical-align: middle;
 }
 .task-stats svg { margin-right: 4px; vertical-align: middle; }
+
+/* ==========================================================================
+   18. 视频上传（按钮入口 + 拖拽遮罩 + 上传队列卡片）
+   · 全部走既有主题变量，暗/亮双主题自动适配。
+   · 拖拽遮罩不拦截事件（由 window 统一监听），上传队列固定右下角。
+   ========================================================================== */
+
+/* ---------- 拖拽遮罩 ---------- */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  opacity: .96;
+  pointer-events: none; /* 不拦截拖拽事件，由 window 监听统一处理 */
+}
+.drop-overlay[hidden] { display: none; }
+.drop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 56px;
+  border: 2px dashed var(--brand-line);
+  border-radius: var(--r-xl);
+  background: var(--brand-soft);
+  text-align: center;
+}
+.drop-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--brand);
+}
+.drop-icon svg { width: 32px; height: 32px; }
+.drop-title { font-size: 18px; font-weight: 700; color: var(--text); }
+.drop-sub { font-size: 13px; color: var(--muted); }
+
+/* ---------- 上传队列卡片 ---------- */
+.upload-queue {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 250;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2);
+  font-size: 12px;
+}
+.upload-queue[hidden] { display: none; }
+.uq-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.uq-title { font-weight: 600; font-size: 13px; }
+.uq-stat { color: var(--muted); font-size: 11px; margin-left: auto; }
+.uq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+}
+.uq-item { display: flex; flex-direction: column; gap: 4px; }
+.uq-row { display: flex; align-items: center; gap: 6px; }
+.uq-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uq-size { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+.uq-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: var(--r-sm);
+  flex-shrink: 0;
+}
+.uq-btn:hover { color: var(--text); background: var(--surface-3); }
+.uq-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.uq-bar > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  background: var(--brand);
+  transition: width .12s linear;
+}
+.uq-bar > i.done { background: var(--ok); }
+.uq-bar > i.error { background: var(--danger); }
+.uq-bar > i.canceled { background: var(--faint); }
+.uq-status { font-size: 11px; color: var(--muted); }
+.uq-status.done { color: var(--ok); }
+.uq-status.error { color: var(--danger); }
+
+@media (max-width: 560px) {
+  .upload-queue { left: 12px; right: 12px; width: auto; bottom: 12px; }
+}

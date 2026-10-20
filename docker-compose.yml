@@ -14,6 +14,8 @@ services:
       FVT_APP_DATA_DIR: /data
       # 转码输出目录（相对路径基于数据目录解析）
       FVT_APP_OUTPUT_DIR: output
+      # 网页端上传视频存放目录（相对路径基于数据目录解析，落在 /data/uploads）
+      FVT_APP_UPLOAD_DIR: uploads
       # 视频浏览根目录，留空则可浏览容器内全部路径（配合 volumes 使用）
       FVT_APP_MEDIA_DIR: /media
       # 并发转码数：显卡/CPU 足够时可调大，机械硬盘建议 1

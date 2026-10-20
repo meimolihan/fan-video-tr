@@ -176,6 +176,7 @@ jobs:
           TAGS="${{ env.DOCKERHUB_IMAGE }}:${VER},${{ env.DOCKERHUB_IMAGE }}:latest"
           TAGS="${TAGS},${{ env.GHCR_IMAGE }}:${VER},${{ env.GHCR_IMAGE }}:${VER_NO_V}"
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          echo "ver_no_v=${VER_NO_V}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -185,7 +186,7 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
-            FVT_VERSION=${{ env.RELEASE_TAG }}
+            FVT_VERSION=${{ steps.tags.outputs.ver_no_v }}
             GOPROXY=https://proxy.golang.org,direct
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -3,6 +3,8 @@
 内置 FFmpeg 的**视频转码 Web 工具**：单文件二进制 + 原生前端（`go:embed` 内嵌），不依赖 Node、不依赖外部 CDN，开箱即用。
 
 - 媒体库浏览 → 视频预览（原生 `<video>`，支持 Range 断点续播）
+- 媒体库删除：条目悬停出现删除按钮，支持删除文件与目录（递归），仅限应用自有目录内
+- 视频上传：按钮 / 拖拽 / 粘贴（`Ctrl+V`）三入口，多文件并发 + 进度 / 取消 / 重试，落盘到「我的上传」目录
 - 批量转码：H.264 / H.265 / VP9 / AV1，可选 NVENC / QSV / VAAPI 硬件加速
 - 质量模式：CRF 或固定码率；支持**双遍编码**（按分辨率自动折算目标码率）
 - 输出容器：MP4 / MKV / WebM / MOV，自动校验容器与编码的兼容性
@@ -85,6 +87,8 @@ help | -h              帮助
 | `FVT_APP_DATA_DIR` | `./data` | 数据目录（输出、模板） |
 | `FVT_APP_MEDIA_DIR` | 空 | 视频浏览根目录 |
 | `FVT_APP_OUTPUT_DIR` | `output` | 转码输出目录（相对 `data_dir`） |
+| `FVT_APP_UPLOAD_DIR` | `uploads` | 网页上传视频存放目录（相对 `data_dir`） |
+| `FVT_APP_UPLOAD_MAX_SIZE` | `10737418240` | 上传单文件大小上限（字节，默认 10GB） |
 | `FVT_APP_WORKER` | `1` | 并发转码数 |
 | `FVT_FFMPEG_ACCEL` | `auto` | `auto` / `none` / `nvenc` / `qsv` / `vaapi` |
 | `FVT_FFMPEG_DETECT_ACCEL` | `true` | 启动时自检硬件编码 |
@@ -119,10 +123,12 @@ help | -h              帮助
 | `GET /api/capabilities` | 编码器 / 硬件加速 / 能力字典 |
 | `GET /api/options` | 前端字典与默认参数 |
 | `GET /api/media/dir` | 目录浏览 |
+| `DELETE /api/media/file` | 删除文件 / 目录（递归，仅限媒体、上传与输出目录内） |
 | `GET /api/media/info` | 媒体信息（编码、分辨率、帧率、时长…） |
 | `GET /api/media/stream` | 视频流（支持 Range） |
 | `GET /api/media/thumb` | 缩略帧 |
 | `POST /api/media/probe` | 探测并返回可转码参数 |
+| `POST /api/media/upload` | 上传视频（multipart 字段 `file`，落盘到上传目录） |
 | `GET/POST/DELETE /api/tasks` | 任务列表 / 批量创建 / 清空 |
 | `GET /api/tasks/stats` | 队列统计 |
 | `GET /api/tasks/output-targets` | 可选输出目录 |

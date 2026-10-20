@@ -23,6 +23,10 @@ app:
   media_dir: ""
   # 转码输出目录（相对路径基于 data_dir）
   output_dir: output
+  # 上传视频存放目录（相对路径基于 data_dir）；网页端上传的视频落在这里
+  upload_dir: uploads
+  # 上传视频大小上限（字节），默认 10GB
+  upload_max_size: 10737418240
   # 并发转码任务数：CPU 密集型转码建议 1~2，硬件加速可适当增大
   worker: 1
 
