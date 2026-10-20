@@ -157,9 +157,20 @@
     try { return localStorage.getItem('fvtr-theme') || 'auto'; } catch (e) { return 'auto'; }
   }
 
-  function cycleTheme() {
+  // effectiveTheme 返回当前实际显示的主题（解析 auto 为系统明暗）
+  function effectiveTheme() {
     var t = currentTheme();
-    var next = THEMES[(THEMES.indexOf(t) + 1) % THEMES.length];
+    if (t === 'auto') {
+      var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+      return dark ? 'dark' : 'light';
+    }
+    return t;
+  }
+
+  function cycleTheme() {
+    // 按“实际显示”翻转：无论当前是 auto 还是显式主题，一次点击必定切换到相反的可见主题。
+    // 修复：auto 且系统为深色时，旧逻辑首次点击 auto→dark 视觉无变化，用户需点两次。
+    var next = effectiveTheme() === 'dark' ? 'light' : 'dark';
     // 减弱动效守卫必须在 JS 侧：全局 @media (prefers-reduced-motion) 命中 *，
     // 但不会命中 ::view-transition-* 伪元素，只靠 CSS 挡不住动画。
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
