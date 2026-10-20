@@ -86,6 +86,125 @@
   color-scheme: light;
 }
 
+/* ---------- 1b. 显式深色 + 跟随系统（auto）明暗令牌 ----------
+   项目原本：:root 即深色默认，仅 [data-theme="light"] 覆盖浅色；
+   而 data-theme 恒为 auto|dark|light 三值且 auto 不会跟随系统（历史遗留）。
+   这里并列补齐两段“内容一致”的深色令牌，覆盖“显式深色”与“跟随系统且系统为深色”：
+   - html[data-theme="dark"]：显式深色（与 :root 同一套值）
+   - @media (prefers-color-scheme: dark) html[data-theme="auto"]：跟随系统为深色
+   同时补 auto 在系统浅色时套用浅色（此前缺失）。不重排原有块，纯追加。 */
+html[data-theme="dark"] {
+  --brand:        #00d3b0;
+  --brand-strong: #00b094;
+  --brand-soft:   rgba(0, 211, 176, .12);
+  --brand-line:   rgba(0, 211, 176, .32);
+
+  --bg:        #080b10;
+  --bg-grad:   radial-gradient(1200px 600px at 12% -8%, rgba(0,211,176,.09), transparent 60%),
+               radial-gradient(900px 500px at 100% 0%, rgba(88,120,255,.07), transparent 55%);
+  --surface:   #10151d;
+  --surface-2: #161d27;
+  --surface-3: #1d2632;
+  --border:    #222c39;
+  --border-2:  #2d3a4a;
+
+  --text:   #e7eef7;
+  --text-2: #b6c4d4;
+  --muted:  #7d8ea3;
+  --faint:  #55657a;
+
+  --info:    #4c9aff;
+  --ok:      #35d07f;
+  --warn:    #ffb020;
+  --danger:  #ff5f6d;
+
+  --ok-soft:   rgba(53, 208, 127, .13);
+  --warn-soft: rgba(255, 176, 32, .13);
+  --dang-soft: rgba(255, 95, 109, .13);
+  --info-soft: rgba(76, 154, 255, .13);
+
+  --sh-1: 0 1px 2px rgba(0,0,0,.4);
+  --sh-2: 0 8px 24px -8px rgba(0,0,0,.55);
+  --sh-3: 0 24px 60px -12px rgba(0,0,0,.7);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="auto"] {
+    --brand:        #00d3b0;
+    --brand-strong: #00b094;
+    --brand-soft:   rgba(0, 211, 176, .12);
+    --brand-line:   rgba(0, 211, 176, .32);
+
+    --bg:        #080b10;
+    --bg-grad:   radial-gradient(1200px 600px at 12% -8%, rgba(0,211,176,.09), transparent 60%),
+                 radial-gradient(900px 500px at 100% 0%, rgba(88,120,255,.07), transparent 55%);
+    --surface:   #10151d;
+    --surface-2: #161d27;
+    --surface-3: #1d2632;
+    --border:    #222c39;
+    --border-2:  #2d3a4a;
+
+    --text:   #e7eef7;
+    --text-2: #b6c4d4;
+    --muted:  #7d8ea3;
+    --faint:  #55657a;
+
+    --info:    #4c9aff;
+    --ok:      #35d07f;
+    --warn:    #ffb020;
+    --danger:  #ff5f6d;
+
+    --ok-soft:   rgba(53, 208, 127, .13);
+    --warn-soft: rgba(255, 176, 32, .13);
+    --dang-soft: rgba(255, 95, 109, .13);
+    --info-soft: rgba(76, 154, 255, .13);
+
+    --sh-1: 0 1px 2px rgba(0,0,0,.4);
+    --sh-2: 0 8px 24px -8px rgba(0,0,0,.55);
+    --sh-3: 0 24px 60px -12px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  html[data-theme="auto"] {
+    --brand:        #0d9488;
+    --brand-strong: #0f766e;
+    --brand-soft:   rgba(13, 148, 136, .10);
+    --brand-line:   rgba(13, 148, 136, .28);
+
+    --bg:        #eef1f5;
+    --bg-grad:   radial-gradient(1100px 560px at 10% -10%, rgba(13,148,136,.10), transparent 60%),
+                 radial-gradient(900px 500px at 100% 0%, rgba(70,100,220,.07), transparent 55%);
+    --surface:   #ffffff;
+    --surface-2: #f5f7fa;
+    --surface-3: #eaeff4;
+    --border:    #dde4ec;
+    --border-2:  #c8d3e0;
+
+    --text:   #14202e;
+    --text-2: #3c4c60;
+    --muted:  #66788e;
+    --faint:  #8d9cb0;
+
+    --info:    #2563eb;
+    --ok:      #128a4f;
+    --warn:    #a86a00;
+    --danger:  #c8333f;
+
+    --ok-soft:   rgba(18, 138, 79, .10);
+    --warn-soft: rgba(168, 106, 0, .10);
+    --dang-soft: rgba(200, 51, 63, .10);
+    --info-soft: rgba(37, 99, 235, .10);
+
+    --sh-1: 0 1px 2px rgba(16,32,48,.07);
+    --sh-2: 0 8px 22px -10px rgba(16,32,48,.22);
+    --sh-3: 0 24px 56px -14px rgba(16,32,48,.28);
+    color-scheme: light;
+  }
+}
+
 /* ---------- 2. 基础重置 ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -1318,4 +1437,31 @@ kbd {
 
 @media (max-width: 560px) {
   .upload-queue { left: 12px; right: 12px; width: auto; bottom: 12px; }
+}
+
+/* ---------- 19. 明暗切换径向揭示动画（View Transitions） ----------
+   旧快照静止垫底层（z=1），新主题快照在上层（z=2）以中心为圆心用径向遮罩向外扩张；
+   24% 为羽化带宽，170% 末端保证覆盖最远角落；关闭 VT 默认的整页交叉淡化。
+   @property 注册 --theme-r 为 <percentage> 是让遮罩半径可逐帧插值的前提；
+   不支持 @property 的浏览器无法插值，动画会静默失效（揭示瞬间完成）——属预期降级，非 bug。
+   参数（24% / 170% / 1.5s）刻意调过，请勿改动。 */
+@property --theme-r {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) {
+  z-index: 2;
+  animation: theme-reveal 1.5s ease-out both;
+  mask-image: radial-gradient(circle at 50% 50%,
+    #000 var(--theme-r), transparent calc(var(--theme-r) + 24%));
+  -webkit-mask-image: radial-gradient(circle at 50% 50%,
+    #000 var(--theme-r), transparent calc(var(--theme-r) + 24%));
+}
+@keyframes theme-reveal {
+  from { --theme-r: 0%; }
+  to   { --theme-r: 170%; }
 }

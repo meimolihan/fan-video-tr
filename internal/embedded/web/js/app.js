@@ -159,7 +159,14 @@
 
   function cycleTheme() {
     var t = currentTheme();
-    applyTheme(THEMES[(THEMES.indexOf(t) + 1) % THEMES.length]);
+    var next = THEMES[(THEMES.indexOf(t) + 1) % THEMES.length];
+    // 减弱动效守卫必须在 JS 侧：全局 @media (prefers-reduced-motion) 命中 *，
+    // 但不会命中 ::view-transition-* 伪元素，只靠 CSS 挡不住动画。
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // 不支持 View Transitions 时直接切换（无动画、无报错）
+    if (!document.startViewTransition || reduce) { applyTheme(next); return; }
+    // 回调内只做同步状态变更（改 data-theme），不 await 异步，避免快照时机错乱
+    document.startViewTransition(function () { applyTheme(next); });
   }
 
   /* ==================== 弹窗 ==================== */
